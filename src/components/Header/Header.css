@@ -1,0 +1,126 @@
+/* header */
+
+.header {
+  max-width: 90%;
+  padding: 20px 10px;
+  margin: 0px auto;
+}
+
+.header ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  background-color: #fff;
+}
+.grey-color {
+  color: #868e96;
+}
+
+.header li a {
+  display: block;
+  margin: 0px 10px;
+  color: black;
+  text-decoration: none;
+  padding: 6px;
+  transition: 0.099s ease-in-out;
+}
+
+.header li a:hover,
+.header .menu-btn:hover {
+  /* background-color: lightgreen; */
+  border-radius: 0.6em;
+  color: #ff2400;
+}
+
+.header .logo-name {
+  height: 100%;
+  width: 100%;
+}
+/* menu */
+
+.header .menu {
+  clear: both;
+  max-height: 0;
+  transition: max-height 0.2s ease-out;
+}
+
+/* menu icon */
+
+.header .menu-icon {
+  cursor: pointer;
+  display: inline-block;
+  padding: 28px 20px;
+  position: relative;
+  user-select: none;
+}
+
+.header .menu-icon .navicon {
+  background: #333;
+  display: block;
+  height: 2px;
+  position: relative;
+  transition: background 0.2s ease-out;
+  width: 18px;
+}
+
+.header .menu-icon .navicon:before,
+.header .menu-icon .navicon:after {
+  background: #333;
+  content: "";
+  display: block;
+  height: 100%;
+  position: absolute;
+  transition: all 0.2s ease-out;
+  width: 100%;
+}
+
+.header .menu-icon .navicon:before {
+  top: 5px;
+}
+
+.header .menu-icon .navicon:after {
+  top: -5px;
+}
+
+/* 48em = 768px */
+
+@media (min-width: 48em) {
+  .header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header .menu {
+    display: flex;
+    max-height: none;
+    flex-flow: row wrap;
+  }
+}
+@media (max-width: 960px) {
+  .header .logo-name {
+    display: block;
+    margin: 1.5em auto 0;
+    width: 70%;
+  }
+
+  .header {
+    display: inline;
+    justify-content: center;
+  }
+
+  .header .menu {
+    flex-grow: 6;
+    line-height: 2;
+    display: flex;
+    max-height: none;
+    justify-content: center;
+    flex-flow: row wrap;
+  }
+
+  .header li a {
+    color: #ff2400;
+  }
+}

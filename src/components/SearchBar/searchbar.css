@@ -1,0 +1,26 @@
+.input-search {
+  display: flex;
+  justify-content: center;
+}
+
+.input {
+  border: none;
+  padding: 0.5em 1em;
+  margin-top: 1em;
+  border-bottom: 1px solid red;
+  font-size: 1.5em;
+  outline: white;
+  width: 30%;
+  font-size: 1.5em;
+}
+
+.input:active {
+  outline: red;
+}
+
+@media (max-width: 800px) {
+  .input {
+    width: 65%;
+    font-size: 1em;
+  }
+}

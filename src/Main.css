@@ -1,0 +1,15 @@
+.my-card {
+  width: 80%;
+  margin: 4em auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(295px, 1fr));
+  grid-gap: 4rem 3rem;
+}
+
+@media (max-width: 800px) {
+  .my-card {
+    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+
+    grid-gap: 4rem 0rem;
+  }
+}
