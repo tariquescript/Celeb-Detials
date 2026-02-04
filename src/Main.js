@@ -7,42 +7,39 @@ import Card from "./components/Card/card";
 function Main() {
   const [celebs, setCelebs] = useState([]);
   const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    var unirest = require("unirest");
+    fetch("https://celebrity-bucks.p.rapidapi.com/birthdays/JSON", {
+      method: "GET",
+      headers: {
+        "x-rapidapi-host": "celebrity-bucks.p.rapidapi.com",
+        "x-rapidapi-key": "YOUR_API_KEY_HERE",
+      },
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("API Error: " + res.status);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setCelebs(data.Birthdays || []);
+        console.log("fetching data");
+      })
+      .catch((err) => {
+        console.error("API failed:", err);
+      });
+  }, []);
 
-    var req = unirest(
-      "GET",
-      "https://celebrity-bucks.p.rapidapi.com/birthdays/JSON"
-    );
-
-    req.headers({
-      "x-rapidapi-host": "celebrity-bucks.p.rapidapi.com",
-      "x-rapidapi-key": "983c8a5fe3mshd8124d605681539p159aeejsn2d0ae1ec21b4",
-      useQueryString: true,
-    });
-
-    req.end(function (res) {
-      if (res.error) throw new Error(res.error);
-      const myData = res.body.Birthdays;
-      setCelebs(myData);
-      console.log("fetching data");
-    });
-  }, [query]);
-
-  ///////////////////////////////// SearchUpdate/////////////////////////////////
-
+  // Search input handler
   const searchUpdate = (e) => {
     setSearch(e.target.value);
   };
-  console.log(search);
 
-  /////////////////////////////////// getSearch /////////////////////////////////////////
-
-  const getSearch = () => {
-    setQuery(setSearch);
-  };
+  // Filter celebs
+  const filteredCelebs = celebs.filter((celeb) =>
+    celeb.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div>
@@ -50,16 +47,15 @@ function Main() {
       <SearchBar
         search={search}
         searchUpdate={searchUpdate}
-        getSearch={getSearch}
       />
       <div className="my-card">
-        {celebs.map((celeb) => (
+        {filteredCelebs.map((celeb) => (
           <Card
+            key={celeb.id}
             name={celeb.name}
             dob={celeb.dob}
             twitter={celeb.twitter}
             age={celeb.age}
-            key={celeb.id}
           />
         ))}
       </div>
