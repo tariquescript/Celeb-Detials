@@ -9,53 +9,63 @@ function Main() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("https://celebrity-bucks.p.rapidapi.com/birthdays/JSON", {
-      method: "GET",
-      headers: {
-        "x-rapidapi-host": "celebrity-bucks.p.rapidapi.com",
-        "x-rapidapi-key": "YOUR_API_KEY_HERE",
-      },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("API Error: " + res.status);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setCelebs(data.Birthdays || []);
-        console.log("fetching data");
-      })
-      .catch((err) => {
-        console.error("API failed:", err);
-      });
-  }, []);
+    if (!search || search.length < 3) return;
 
-  // Search input handler
+    const delay = setTimeout(() => {
+      fetch(
+        `https://celebrity-by-api-ninjas.p.rapidapi.com/v1/celebrity?name=${search}`,
+        {
+          method: "GET",
+          headers: {
+            "X-RapidAPI-Key": process.env.REACT_APP_RAPIDAPI_KEY,
+            "X-RapidAPI-Host": "celebrity-by-api-ninjas.p.rapidapi.com",
+          },
+        }
+      )
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("API Error: " + res.status);
+          }
+          return res.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setCelebs(data);
+          } else {
+            setCelebs([]);
+          }
+        })
+        .catch((err) => console.error("API failed:", err));
+    }, 800); // debounce
+
+    return () => clearTimeout(delay);
+  }, [search]);
+
   const searchUpdate = (e) => {
     setSearch(e.target.value);
   };
 
-  // Filter celebs
-  const filteredCelebs = celebs.filter((celeb) =>
-    celeb.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCelebs = Array.isArray(celebs)
+    ? celebs.filter((celeb) =>
+        celeb.name.toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
+
+    console.log(celebs);
 
   return (
     <div>
       <Header />
-      <SearchBar
-        search={search}
-        searchUpdate={searchUpdate}
-      />
+      <SearchBar search={search} searchUpdate={searchUpdate} />
+
       <div className="my-card">
-        {filteredCelebs.map((celeb) => (
+        {filteredCelebs.map((celeb, index) => (
           <Card
-            key={celeb.id}
+            key={index}
             name={celeb.name}
-            dob={celeb.dob}
-            twitter={celeb.twitter}
-            age={celeb.age}
+            nationality={celeb.nationality}
+            // birthday={celeb.birthday}
+            occupation={celeb.occupation}
           />
         ))}
       </div>

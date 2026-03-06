@@ -1,7 +1,7 @@
 import React from "react";
 import "./card.css";
 
-function Card({ name, dob, age }) {
+function Card({ name, birthday, nationality, occupation }) {
   return (
     <div className="card">
       <div className="card-content">
@@ -13,10 +13,13 @@ function Card({ name, dob, age }) {
         <div className="celeb-info">
           <ul>
             <li className="celeb-age">
-              DOB: {dob || "N/A"}
+              {/* DOB: {birthday || "N/A"} */}
             </li>
-            <li className="celeb-age">
-              Age: {age ?? "N/A"}
+            <li className="celeb-nationality">
+              Nationality: {nationality || "N/A"}
+            </li>
+            <li className="celeb-occupation">
+              Occupation: {occupation || "N/A"}
             </li>
           </ul>
         </div>
