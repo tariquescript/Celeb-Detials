@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "./Main.css";
 import Header from "./components/Header/Header";
-import SearchBar from "./components/SearchBar/searchbar";
-import Card from "./components/Card/card";
+import SearchBar from "./components/SearchBar/Searchbar";
+import Card from "./components/Card/Card";
 
 function Main() {
   const [celebs, setCelebs] = useState([]);
