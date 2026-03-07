@@ -47,11 +47,10 @@ function Main() {
 
   const filteredCelebs = Array.isArray(celebs)
     ? celebs.filter((celeb) =>
-        celeb.name.toLowerCase().includes(search.toLowerCase())
+        celeb.name.toUpperCase().includes(search.toUpperCase())
       )
     : [];
 
-    console.log(celebs);
 
   return (
     <div>
@@ -64,7 +63,7 @@ function Main() {
             key={index}
             name={celeb.name}
             nationality={celeb.nationality}
-            // birthday={celeb.birthday}
+            dob={celeb.birthday}
             occupation={celeb.occupation}
           />
         ))}
