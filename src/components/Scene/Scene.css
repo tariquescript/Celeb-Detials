@@ -1,0 +1,17 @@
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Vignette the canvas so the composition sits inside the page rather than
+     fighting the copy for attention. */
+  -webkit-mask-image: radial-gradient(130% 100% at 50% 42%, #000 42%, rgba(0, 0, 0, 0.55) 72%, transparent 100%);
+  mask-image: radial-gradient(130% 100% at 50% 42%, #000 42%, rgba(0, 0, 0, 0.55) 72%, transparent 100%);
+  animation: fade 1.6s ease 0.2s both;
+}
+
+.scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}

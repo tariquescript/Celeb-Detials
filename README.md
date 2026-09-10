@@ -1,68 +1,112 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# LUMINA — Celebrity Intelligence
 
-## Available Scripts
+A real-time celebrity search app wrapped in a hand-built WebGL scene. Type a
+name and LUMINA queries a live API for that person's occupation, nationality,
+height, birthday and estimated net worth, then shows the matches as
+interactive cards. A 3D orb rendered with custom shaders reacts to what the
+search is doing.
 
-In the project directory, you can run:
+## Highlights
 
-### `npm start`
+**3D scene (three.js + GLSL, no model files)**
+- A liquid "light" orb whose surface is displaced by layered 3D simplex noise
+  in the vertex shader. Normals are recalculated from the displaced surface,
+  so the lighting follows the moving shape.
+- Fresnel rim light, a two-light setup and angle-dependent iridescence in the
+  fragment shader.
+- A spiral particle galaxy (up to 8,000 points), three tilted energy rings
+  with light pulses travelling around them, orbiting satellites and a
+  parallax starfield.
+- **Reacts to the app:** while a request is loading, the orb's displacement,
+  glow and orbit speed increase, then settle again.
+- Pointer parallax and scroll-linked motion, both smoothed with damping.
+- Performance: pixel ratio is capped, particle counts and mesh detail are
+  lower on small screens, rendering stops while the tab is hidden, WebGL
+  context loss is handled, and all GPU resources are released on unmount.
+- If WebGL is unavailable, the page falls back to a CSS aurora background.
+  With `prefers-reduced-motion`, the scene renders a single still frame.
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+**Search experience**
+- Glass search field with a rotating conic-gradient border and a typewriter
+  placeholder that cycles through example names.
+- Requests are debounced, and a new keystroke cancels any request still in
+  flight (`AbortController`), so only the latest query's results are shown.
+- Separate UI states for idle, loading (skeleton cards), results, no match
+  and error. Error messages are specific for network failures, rejected
+  API keys (401/403), rate limiting (429) and server errors, and the error
+  state has a working retry button.
+- Keyboard: `/` focuses the search from anywhere, `Esc` clears it, `Enter`
+  scrolls to the results.
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+**Result cards**
+- 3D tilt and a spotlight that follow the pointer. These are driven by CSS
+  custom properties, so mouse movement doesn't cause React re-renders.
+- Each name gets its own accent gradient, derived from a hash of the name.
+- Country flags and names come from ISO codes via `Intl.DisplayNames`.
+  Net worth, dates and height (metric and imperial) are formatted for
+  reading.
+- The net-worth bar uses a log scale from $100K to $100B, so bar lengths
+  can be compared across cards.
 
-### `npm test`
+**Built to production standards**
+- Fully responsive from 320px to ultrawide, checked for horizontal overflow
+  at every breakpoint. On wide screens the hero uses an asymmetric
+  two-column layout.
+- Accessible: labelled controls, a single link per card that covers the
+  whole card, `aria-live` results, visible focus rings, a mobile menu that
+  closes with Escape and locks page scrolling while open, and body text
+  that meets WCAG AA contrast.
+- A small design system built from CSS custom properties. No UI framework.
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Tech stack
 
-### `npm run build`
+| Layer     | Choice                                                   |
+| --------- | -------------------------------------------------------- |
+| UI        | React 16 (hooks only)                                    |
+| 3D        | three.js r137 with custom `ShaderMaterial`s              |
+| Shaders   | GLSL: simplex-noise displacement, fresnel, point sprites |
+| Data      | API Ninjas Celebrity endpoint via RapidAPI               |
+| Styling   | Plain CSS with design tokens                             |
+| Tooling   | Create React App 3                                       |
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Getting started
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Create a `.env` file in the project root with your RapidAPI key:
 
-### `npm run eject`
+```bash
+REACT_APP_RAPIDAPI_KEY=your_key_here
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+Start the dev server (set `PORT` if 3000 is already in use):
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm run dev
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+Create a production build:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```bash
+npm run build
+```
 
-## Learn More
+## Project structure
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
+src/
+├── Main.js                 # page composition, search state, fetch lifecycle
+├── components/
+│   ├── Scene/              # three.js scene + GLSL shader sources
+│   ├── SearchBar/          # search field, typewriter placeholder, shortcuts
+│   ├── Card/               # result card with tilt and spotlight
+│   ├── Header/             # sticky glass nav + mobile menu
+│   └── Footer/
+└── utils/format.js         # money, dates, height, flags, accent colours
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
-
-### Analyzing the Bundle Size
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
-
-### Making a Progressive Web App
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
-
-### Advanced Configuration
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
-
-### Deployment
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
-
-### `npm run build` fails to minify
-
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+Designed and built by **Tarique Shaikh**.
