@@ -1,13 +1,15 @@
+/* The canvas belongs to the hero and scrolls with it, so the orb stays locked
+   to its slot in the masthead without any per-scroll bookkeeping. */
 .scene {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
-  /* Vignette the canvas so the composition sits inside the page rather than
-     fighting the copy for attention. */
-  -webkit-mask-image: radial-gradient(130% 100% at 50% 42%, #000 42%, rgba(0, 0, 0, 0.55) 72%, transparent 100%);
-  mask-image: radial-gradient(130% 100% at 50% 42%, #000 42%, rgba(0, 0, 0, 0.55) 72%, transparent 100%);
-  animation: fade 1.6s ease 0.2s both;
+  /* Soft edges, and a long fade at the foot so the cover melts into the
+     page instead of ending on a hard line. */
+  -webkit-mask-image: radial-gradient(140% 105% at 50% 38%, #000 52%, rgba(0, 0, 0, 0.6) 74%, transparent 100%);
+  mask-image: radial-gradient(140% 105% at 50% 38%, #000 52%, rgba(0, 0, 0, 0.6) 74%, transparent 100%);
+  animation: fade 1.4s ease 0.1s both;
 }
 
 .scene canvas {

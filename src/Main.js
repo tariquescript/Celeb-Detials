@@ -5,17 +5,35 @@ import SearchBar from "./components/SearchBar/searchbar";
 import Card from "./components/Card/card";
 import Scene from "./components/Scene/Scene";
 import Footer from "./components/Footer/Footer";
+import Ticker from "./components/Ticker/Ticker";
 import { titleCase } from "./utils/format";
 
 const MIN_QUERY = 3;
 const DEBOUNCE_MS = 550;
 
-const SUGGESTIONS = [
-  "Tom Hanks",
-  "Rihanna",
-  "Cristiano Ronaldo",
+// Names that run along the foot of the cover. Each one is a live search.
+const TRENDING = [
   "Taylor Swift",
+  "Shah Rukh Khan",
+  "Zendaya",
+  "Cristiano Ronaldo",
+  "Rihanna",
+  "Keanu Reeves",
+  "Priyanka Chopra",
+  "Lionel Messi",
+  "Tom Hanks",
+  "Serena Williams",
+  "Leonardo DiCaprio",
+  "Oprah Winfrey",
 ];
+
+const MASTHEAD = ["I", "C", null, "N", "S"]; // null marks the orb's slot
+
+// The cover is dated like a print issue: always the current month.
+const ISSUE_DATE = new Date().toLocaleDateString("en-GB", {
+  month: "long",
+  year: "numeric",
+});
 
 const STEPS = [
   {
@@ -88,6 +106,8 @@ function Main() {
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0); // bumped by "Try again" to refetch
   const abortRef = useRef(null);
+  const orbSlotRef = useRef(null);
+  const [sceneReady, setSceneReady] = useState(false);
 
   const query = search.trim();
 
@@ -191,36 +211,73 @@ function Main() {
 
   return (
     <>
-      <Scene energy={energy} />
       <Header />
 
       <main id="top">
         {/* ------------------------------------------------------------ hero */}
-        <section className="hero">
-          <div className="shell hero__inner">
-            <div className="hero__copy">
-            <span className="eyebrow rise">
-              <i className="eyebrow__dot" />
-              Live celebrity intelligence
-            </span>
+        {/* Composed like a magazine cover: issue line, masthead, cover lines,
+            and the WebGL orb typeset as the "O" in the title. */}
+        <section className="hero" aria-labelledby="hero-title">
+          <Scene energy={energy} anchorRef={orbSlotRef} onReady={setSceneReady} />
 
-            <h1 className="hero__title">
-              <span className="hero__line rise" style={{ animationDelay: "0.1s" }}>
-                Search anyone
+          <div className="cover shell">
+            <div className="cover__issue rise">
+              <span>
+                N° 01 <i className="cover__rule" aria-hidden="true" />
+                <span className="cover__issue-name">The Icons Issue</span>
               </span>
-              <span
-                className="hero__line gradient-text rise"
-                style={{ animationDelay: "0.22s" }}
-              >
-                worth knowing.
+              <span className="cover__live">
+                <i className="cover__pulse" aria-hidden="true" />
+                Live edition
+              </span>
+              <span>{ISSUE_DATE}</span>
+            </div>
+
+            <h1 className="masthead" id="hero-title">
+              <span className="sr-only">
+                Icons: who they are, where they’re from, and what they’re worth
+              </span>
+              <span className="masthead__word" aria-hidden="true">
+                {MASTHEAD.map((letter, i) =>
+                  letter ? (
+                    <span
+                      key={letter}
+                      className="masthead__letter"
+                      style={{ animationDelay: `${0.12 + i * 0.07}s` }}
+                    >
+                      {letter}
+                    </span>
+                  ) : (
+                    <span
+                      key="orb"
+                      ref={orbSlotRef}
+                      className={`masthead__orb${sceneReady ? " is-rendered" : ""}`}
+                    />
+                  )
+                )}
               </span>
             </h1>
 
-            <p className="hero__lede rise" style={{ animationDelay: "0.34s" }}>
-              A rendered, real-time window into the public record. Type a name and
-              LUMINA pulls the craft, the origin, the numbers — framed inside a
-              scene drawn by your GPU.
-            </p>
+            <div className="cover__deck">
+              <p className="cover__line rise" style={{ animationDelay: "0.5s" }}>
+                <span className="cover__index">01</span>
+                <strong>The worth index</strong>
+                Every fortune on one honest log scale, from $100K to $100B.
+              </p>
+
+              <p className="cover__lede rise" style={{ animationDelay: "0.38s" }}>
+                Who they are, where they’re from, and what they’re <em>worth</em>.
+              </p>
+
+              <p
+                className="cover__line cover__line--end rise"
+                style={{ animationDelay: "0.58s" }}
+              >
+                <span className="cover__index">02</span>
+                <strong>Origins &amp; stature</strong>
+                Flags, birthdays and heights, in centimetres and in feet.
+              </p>
+            </div>
 
             <SearchBar
               search={search}
@@ -229,35 +286,10 @@ function Main() {
               onSubmit={scrollToResults}
               loading={status === "loading"}
               hint={hint}
-              suggestions={SUGGESTIONS}
-              onPick={pickSuggestion}
             />
-
-            <ul className="hero__stats rise" style={{ animationDelay: "0.6s" }}>
-              <li>
-                <strong>Real-time</strong>
-                <span>Debounced live API</span>
-              </li>
-              <li>
-                <strong>WebGL</strong>
-                <span>Custom GLSL scene</span>
-              </li>
-              <li>
-                <strong>Responsive</strong>
-                <span>320px → ultrawide</span>
-              </li>
-            </ul>
-            </div>
-
-            {/* Reserved stage for the WebGL composition on wide screens. */}
-            <div className="hero__stage" aria-hidden="true" />
           </div>
 
-          <a className="scroll-cue" href="#discover" aria-label="Scroll to results">
-            <span className="scroll-cue__track">
-              <span className="scroll-cue__dot" />
-            </span>
-          </a>
+          <Ticker label="On the cover" names={TRENDING} onPick={pickSuggestion} />
         </section>
 
         {/* --------------------------------------------------------- results */}
@@ -330,8 +362,8 @@ function Main() {
                       : "Nothing searched yet"}
                   </h3>
                   <p>
-                    Start with a name above, or tap one of the suggestions to see the
-                    interface fill in.
+                    Start with a name above, or pick one from the cover ticker to see
+                    the interface fill in.
                   </p>
                 </div>
               )}
@@ -413,13 +445,14 @@ function Main() {
             </div>
 
             <p className="stack__foot">
-              The hero scene is a bespoke three.js composition — a simplex-noise
-              displaced orb with analytically re-derived normals, a spiral particle
-              galaxy, additive energy rings and a parallax starfield. No model files,
-              no textures, no post-processing library: every pixel is generated by
-              shaders written for this project. It caps its pixel ratio, scales its
-              particle budget to the device, and stops rendering whenever the tab is
-              hidden.
+              The cover is a bespoke three.js composition — a simplex-noise displaced
+              orb with analytically re-derived normals, a spiral particle galaxy,
+              additive energy rings and a parallax starfield. The orb is measured
+              against the masthead and fitted to its letter slot, so it reads as the
+              “O” in ICONS at every screen size. No model files, no textures, no
+              post-processing library: every pixel is generated by shaders written for
+              this project. It caps its pixel ratio, scales its particle budget to the
+              device, and stops rendering whenever the cover is off-screen.
             </p>
           </div>
         </section>

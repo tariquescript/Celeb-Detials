@@ -19,7 +19,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 1.25rem;
-  height: 74px;
+  height: var(--header-h);
 }
 
 /* ------------------------------------------------------------------ brand */
@@ -272,5 +272,4 @@
 
 @media (max-width: 420px) {
   .brand__tag { display: none; }
-  .site-header__inner { height: 66px; }
 }

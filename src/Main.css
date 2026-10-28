@@ -8,120 +8,77 @@ main {
 }
 
 /* ------------------------------------------------------------------- hero */
+/* A magazine cover rather than a landing page: everything sits on one
+   centred axis, with the WebGL orb set into the masthead as its "O". */
 .hero {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  /* The copy scrim is deliberately wider than the column; clip it to the
-     full-bleed hero so it can never widen the page on phones. `clip` avoids
-     creating a scroll container; `hidden` is the fallback. */
+  min-height: 100svh;
+  /* Slide up beneath the sticky header so the scene owns the first screen. */
+  margin-top: calc(-1 * var(--header-h));
+  padding-top: var(--header-h);
   overflow: hidden;
   overflow: clip;
-  min-height: calc(100svh - 74px);
-  padding: clamp(2rem, 5vh, 3.5rem) 0 clamp(3rem, 7vh, 5rem);
+  isolation: isolate;
 }
 
 @supports not (min-height: 100svh) {
-  .hero { min-height: calc(100vh - 74px); }
+  .hero { min-height: 100vh; }
 }
 
-.hero__inner {
+.cover {
   position: relative;
+  z-index: 1;
+  flex: 1 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: clamp(0.85rem, 2.4vh, 2rem);
+  max-width: 1360px;
+  padding-top: clamp(1rem, 3.5vh, 2.25rem);
+  padding-bottom: clamp(1.25rem, 4vh, 3.75rem);
   text-align: center;
-  gap: 1.35rem;
 }
 
-/* Scrim: pulls the WebGL luminance down just behind the copy so type keeps
-   its contrast. Only needed while the scene sits under the text — on wide
-   screens the composition moves aside and the scrim is dropped entirely. */
-.hero__inner::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -6%;
-  width: min(1180px, 124%);
-  height: 70%;
-  transform: translateX(-50%);
-  pointer-events: none;
-  z-index: -1;
-  /* Covers the headline and lede only; the orb glows freely below. */
-  background: radial-gradient(
-    56% 52% at 50% 50%,
-    rgba(4, 5, 12, 0.78) 0%,
-    rgba(4, 5, 12, 0.5) 50%,
-    transparent 100%
-  );
+/* --- issue line */
+.cover__issue {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.95rem;
+  border-bottom: 1px solid var(--stroke);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-2);
 }
 
-.hero__inner > * { position: relative; }
-
-/* Below 1080px the copy is a transparent wrapper so the flex column above
-   still controls spacing. */
-.hero__copy { display: contents; }
-
-/* Wide screens: the copy claims the left half, the WebGL composition claims
-   the right. Nothing overlaps, so both can run at full strength. */
-@media (min-width: 1080px) {
-  .hero__inner {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    align-items: center;
-    gap: 1.25rem 3rem;
-    text-align: left;
-  }
-
-  .hero__inner::before {
-    left: 0;
-    top: 50%;
-    width: 74%;
-    height: 150%;
-    transform: translate(-14%, -50%);
-    background: radial-gradient(
-      50% 46% at 42% 50%,
-      rgba(4, 5, 12, 0.72) 0%,
-      rgba(4, 5, 12, 0.42) 52%,
-      transparent 100%
-    );
-  }
-
-  .hero__copy {
-    grid-column: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.35rem;
-  }
-
-  .hero__stage { grid-column: 2; min-height: 480px; }
-}
-
-.eyebrow {
+.cover__issue > span {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  padding: 0.42rem 0.95rem 0.42rem 0.7rem;
-  border-radius: var(--r-pill);
-  font-size: 0.73rem;
-  font-weight: 500;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-1);
-  background: var(--surface);
-  border: 1px solid var(--stroke);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  gap: 0.75rem;
+  white-space: nowrap;
 }
 
-.eyebrow__dot {
-  width: 7px;
-  height: 7px;
+.cover__rule {
+  width: 30px;
+  height: 1px;
+  background: var(--champagne);
+  opacity: 0.7;
+}
+
+.cover__live { color: var(--ink-1); }
+
+.cover__pulse {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--cyan);
-  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.6);
   animation: pulse-dot-cyan 2.6s var(--ease-out) infinite;
 }
 
@@ -131,114 +88,157 @@ main {
   100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
 }
 
-.hero__title {
-  font-size: clamp(2.2rem, 11vw, 5.6rem);
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.98;
-  margin: 0.2rem 0 0;
+/* --- masthead */
+.masthead {
+  margin: clamp(0.25rem, 1.5vh, 1rem) 0 0;
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+  font-weight: 500;
+  /* Sized by whichever runs out first, width or height, so the cover always
+     fits one screen. */
+  font-size: clamp(4.6rem, min(25vw, 33vh), 17.5rem);
+  line-height: 0.82;
+  letter-spacing: -0.012em;
+  color: var(--ink-0);
+  white-space: nowrap;
+}
+
+.masthead__word {
+  display: inline-block;
+  padding-top: 0.04em;
+}
+
+.masthead__letter {
+  display: inline-block;
+  background: linear-gradient(180deg, #ffffff 18%, #ece7f8 60%, #c9bcef 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: letter-in 1.3s var(--ease-out) both;
+}
+
+@keyframes letter-in {
+  from { opacity: 0; transform: translate3d(0, 0.1em, 0); filter: blur(16px); }
+  to   { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* The empty slot the WebGL orb is fitted to. An empty inline-block sits its
+   bottom edge on the baseline, so a box one cap-height tall lines up with
+   the capitals. Never transform this element: the scene measures it. */
+.masthead__orb {
+  position: relative;
+  display: inline-block;
+  width: var(--cap-height);
+  height: var(--cap-height);
+  margin: 0 0.045em;
+  /* Bodoni Moda's round capitals rise ~0.77em and dip ~0.01em below the
+     baseline; the slot copies that overshoot so the orb reads as an O. */
+  vertical-align: -0.01em;
+  --cap-height: 0.775em;
+}
+
+/* CSS stand-in for the orb: visible until the scene's first frame, and for
+   good if WebGL is unavailable, so the word always reads. */
+.masthead__orb::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    #e4dcff 0%,
+    #8f74ff 16%,
+    #3b2a86 46%,
+    #10264a 76%,
+    #07142a 100%
+  );
+  box-shadow: inset -0.03em -0.04em 0.08em rgba(79, 216, 255, 0.55),
+    0 0 0.35em rgba(124, 92, 255, 0.35);
+  transition: opacity 1.2s var(--ease-out) 0.4s;
+}
+
+.masthead__orb.is-rendered::before { opacity: 0; }
+
+/* --- deck: lede flanked by cover lines */
+.cover__deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 1fr);
+  align-items: end;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  width: 100%;
+}
+
+.cover__lede {
+  font-family: var(--font-serif);
+  font-size: clamp(1.3rem, 2.15vw, 1.8rem);
+  font-weight: 400;
+  line-height: 1.28;
+  letter-spacing: -0.01em;
+  color: var(--ink-0);
   text-wrap: balance;
+  text-shadow: 0 2px 18px rgba(4, 5, 12, 0.9);
 }
 
-.hero__line { display: block; }
-
-.hero__lede {
-  max-width: 62ch;
-  font-size: clamp(0.98rem, 1.5vw, 1.12rem);
-  color: var(--ink-1);
-  line-height: 1.7;
-  text-wrap: pretty;
+.cover__lede em {
+  font-style: italic;
+  color: var(--champagne);
 }
 
-.hero .search { margin-top: clamp(1rem, 3vw, 2rem); }
-
-@media (min-width: 1080px) {
-  .hero .search { margin-inline: 0; width: min(600px, 100%); }
-  /* Component stylesheets load after this one, so these need the extra
-     specificity to win. */
-  .hero .search-hint { text-align: left; }
-  .hero .search-chips { justify-content: flex-start; }
-  .hero__stats { justify-content: flex-start; }
-  /* The column is ~600px wide — the full-bleed display size would wrap to
-     four lines here. */
-  .hero__title { font-size: clamp(2.8rem, 4vw, 4rem); }
-  .hero__lede { font-size: 1.02rem; }
-  .scroll-cue { left: var(--gutter); transform: none; }
+.cover__line {
+  position: relative;
+  justify-self: start;
+  max-width: 25ch;
+  text-align: left;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-shadow: 0 1px 12px rgba(4, 5, 12, 0.95);
 }
 
-@media (min-width: 1400px) {
-  .hero__title { font-size: 4.4rem; }
+/* The galaxy is densest out at the flanks; a soft pool of shadow keeps the
+   small print readable without boxing it in. */
+.cover__line::before {
+  content: "";
+  position: absolute;
+  inset: -1.75rem -2.25rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(4, 5, 12, 0.82), rgba(4, 5, 12, 0.45) 60%, transparent);
 }
 
-.hero__stats {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: clamp(1rem, 5vw, 3.5rem);
-  margin-top: clamp(1.5rem, 4vw, 2.75rem);
-}
-
-.hero__stats li {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 118px;
-}
-
-.hero__stats strong {
+.cover__line strong {
+  display: block;
+  margin-bottom: 0.2rem;
   font-family: var(--font-display);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--ink-0);
 }
 
-.hero__stats span {
-  font-size: 0.74rem;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-/* scroll cue */
-.scroll-cue {
-  position: absolute;
-  left: 50%;
-  bottom: clamp(1.2rem, 4vh, 2.4rem);
-  transform: translateX(-50%);
-  display: grid;
-  place-items: center;
-  animation: fade 1s ease 1.4s both;
-}
-
-.scroll-cue__track {
+.cover__index {
   display: block;
-  width: 24px;
-  height: 40px;
-  border-radius: var(--r-pill);
-  border: 1px solid var(--stroke-strong);
-  position: relative;
-  transition: border-color 0.3s var(--ease-out);
+  width: 2.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(232, 204, 160, 0.4);
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  color: var(--champagne);
 }
 
-.scroll-cue:hover .scroll-cue__track { border-color: var(--cyan); }
-
-.scroll-cue__dot {
-  position: absolute;
-  left: 50%;
-  top: 8px;
-  width: 4px;
-  height: 7px;
-  border-radius: 3px;
-  background: var(--cyan);
-  transform: translateX(-50%);
-  animation: cue 2s var(--ease-in-out) infinite;
+.cover__line--end {
+  justify-self: end;
+  text-align: right;
 }
 
-@keyframes cue {
-  0%, 100% { transform: translate(-50%, 0); opacity: 0; }
-  25%      { opacity: 1; }
-  75%      { transform: translate(-50%, 15px); opacity: 0; }
+.cover__line--end .cover__index { margin-left: auto; }
+
+.hero .search {
+  width: min(620px, 100%);
+  margin-top: clamp(0.25rem, 1.5vh, 1rem);
 }
 
 /* -------------------------------------------------------------- sections */
@@ -248,6 +248,9 @@ main {
   padding: clamp(3rem, 8vw, 6rem) 0;
   scroll-margin-top: 90px;
 }
+
+/* Last section before the footer: a shorter tail so the page doesn't trail off. */
+.stack { padding-bottom: clamp(2.5rem, 6vw, 4.5rem); }
 
 .section-head {
   display: flex;
@@ -496,18 +499,32 @@ main {
 
 /* --------------------------------------------------------------- tablets */
 @media (max-width: 900px) {
-  .hero { min-height: auto; padding-top: clamp(2rem, 6vh, 3.5rem); }
-  .scroll-cue { display: none; }
+  .cover__deck {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1.5rem 1.25rem;
+  }
+  .cover__lede { grid-column: 1 / -1; order: -1; }
   .stack__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .cover__issue-name,
+  .cover__rule { display: none; }
+  .cover__issue { font-size: 0.6rem; letter-spacing: 0.16em; }
+  .cover__line { font-size: 0.76rem; }
+  .cover__line strong { font-size: 0.84rem; }
 }
 
 @media (max-width: 480px) {
   .stack__grid { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 360px) {
+  .cover__issue { letter-spacing: 0.1em; }
+}
+
 @media (max-width: 520px) {
-  .hero__stats { gap: 1.1rem 2rem; }
-  .hero__stats li { min-width: 96px; }
   .section-head { align-items: flex-start; }
   .pill { max-width: 100%; }
 }

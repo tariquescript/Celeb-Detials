@@ -18,12 +18,32 @@ import {
    galaxy and a parallax starfield. Everything is procedural — no external
    models or textures — so the whole scene ships inside the JS bundle.
 
+   The orb is typeset: it is placed and sized to fill an empty slot in the
+   hero masthead (`anchorRef`), so it reads as the "O" in the word. The
+   camera looks straight down -Z, so pixels on the z = 0 plane map linearly
+   onto world units and the alignment holds at every viewport size.
+
    The scene reacts to the app: `energy` rises while a search is in flight,
-   which widens the orb's displacement and speeds the galaxy up.
+   which widens the orb's displacement and speeds the galaxy up. Hovering
+   the orb itself stirs it a little too.
    -------------------------------------------------------------------------- */
+
+const FOV = 30;
+const CAMERA_Z = 10;
+// The slot already carries the typeface's overshoot, and the noise pushes
+// the surface out by up to ~11%, so the resting sphere sits a touch inside it.
+const ORB_FILL = 0.94;
+const GALAXY_INNER = 2.25;
+const GALAXY_OUTER = 6.35;
+const INTRO_SECONDS = 1.9;
 
 const damp = (current, target, lambda, dt) =>
   current + (target - current) * (1 - Math.exp(-lambda * dt));
+
+const easeOutBack = (t) => {
+  const c = 1.45;
+  return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2);
+};
 
 function buildGalaxy(count, tier) {
   const positions = new Float32Array(count * 3);
@@ -92,9 +112,11 @@ function buildStarfield(count) {
     if (v.lengthSq() < 0.0001) v.set(0, 1, 0);
     v.normalize().multiplyScalar(7.5 + Math.random() * 11);
 
+    // Only the far hemisphere: the camera sits inside the shell, and a star
+    // drifting past the lens would balloon into a blob.
     positions[i * 3] = v.x;
     positions[i * 3 + 1] = v.y * 0.75;
-    positions[i * 3 + 2] = v.z;
+    positions[i * 3 + 2] = -Math.abs(v.z) - 1.5;
 
     tmp.copy(cold).lerp(warm, Math.random() * Math.random());
     colors[i * 3] = tmp.r;
@@ -113,17 +135,26 @@ function buildStarfield(count) {
   return geo;
 }
 
-function Scene({ energy = 0 }) {
+function Scene({ energy = 0, anchorRef, onReady }) {
   const mountRef = useRef(null);
   const energyRef = useRef(energy);
+  const readyRef = useRef(onReady);
 
   useEffect(() => {
     energyRef.current = energy;
   }, [energy]);
 
   useEffect(() => {
+    readyRef.current = onReady;
+  }, [onReady]);
+
+  useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return undefined;
+
+    const announce = (ready) => {
+      if (typeof readyRef.current === "function") readyRef.current(ready);
+    };
 
     const reduceMotion =
       typeof window.matchMedia === "function" &&
@@ -137,7 +168,8 @@ function Scene({ energy = 0 }) {
         powerPreference: "high-performance",
       });
     } catch (err) {
-      // No WebGL (old browser, blocked context) — the CSS aurora carries the page.
+      // No WebGL (old browser, blocked context) — the CSS orb in the masthead
+      // and the aurora behind the page carry the design.
       return undefined;
     }
 
@@ -152,22 +184,39 @@ function Scene({ energy = 0 }) {
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x04050c, 0.055);
+    scene.fog = new THREE.FogExp2(0x04050c, 0.04);
 
     const camera = new THREE.PerspectiveCamera(
-      42,
+      FOV,
       mount.clientWidth / Math.max(mount.clientHeight, 1),
       0.1,
       100
     );
-    camera.position.set(0, 0.55, 8.4);
+    camera.position.set(0, 0, CAMERA_Z);
+    camera.lookAt(0, 0, 0);
 
+    // `world` is pinned to the masthead slot. `core` (orb, lattice, rings,
+    // satellites) is scaled to the slot; `halo` (the galaxy) to the viewport,
+    // so the disc frames the whole cover rather than shrinking with the type.
     const world = new THREE.Group();
-    // Where the composition sits is decided per-breakpoint in frame(): on wide
-    // screens it takes the right half of the stage beside the copy; on narrow
-    // ones it centres and drops behind the hero.
-    const layout = { baseX: 0, baseY: -0.95 };
+    const core = new THREE.Group();
+    const halo = new THREE.Group();
+    world.add(halo);
+    world.add(core);
     scene.add(world);
+
+    const layout = {
+      x: 0,
+      y: 0,
+      core: 1,
+      halo: 1,
+      // the orb's centre and radius in client pixels, for hover detection
+      cx: -1e4,
+      cy: -1e4,
+      r: 0,
+      // last measured anchor rect, so unchanged frames skip the maths
+      key: "",
+    };
 
     /* ------------------------------------------------------------- the orb */
     const orbUniforms = {
@@ -191,10 +240,11 @@ function Scene({ energy = 0 }) {
       transparent: true,
     });
     const orb = new THREE.Mesh(orbGeo, orbMat);
-    world.add(orb);
+    orb.renderOrder = 1;
+    core.add(orb);
 
     /* ----------------------------------------------------- lattice shell */
-    const shellGeo = new THREE.IcosahedronGeometry(1.86, 2);
+    const shellGeo = new THREE.IcosahedronGeometry(1.62, 2);
     const shellMat = new THREE.MeshBasicMaterial({
       color: new THREE.Color("#6ee7ff"),
       wireframe: true,
@@ -204,13 +254,15 @@ function Scene({ energy = 0 }) {
       depthWrite: false,
     });
     const shell = new THREE.Mesh(shellGeo, shellMat);
-    world.add(shell);
+    core.add(shell);
 
     /* ---------------------------------------------------------- the rings */
+    // Laid nearly flat, so from the front they read as orbits threading
+    // behind the letters on either side of the orb.
     const ringDefs = [
-      { r: 2.05, tube: 0.017, tilt: [1.18, 0.0, 0.22], opacity: 1, speed: 0.34 },
-      { r: 2.5, tube: 0.013, tilt: [0.46, 0.55, -0.3], opacity: 0.8, speed: -0.26 },
-      { r: 3.15, tube: 0.01, tilt: [-0.35, -0.4, 0.75], opacity: 0.6, speed: 0.18 },
+      { r: 1.75, tube: 0.016, tilt: [1.3, 0.0, 0.1], opacity: 1, speed: 0.34 },
+      { r: 2.35, tube: 0.012, tilt: [1.12, 0.22, -0.16], opacity: 0.78, speed: -0.26 },
+      { r: 3.05, tube: 0.009, tilt: [1.42, -0.12, 0.26], opacity: 0.55, speed: 0.18 },
     ];
 
     const rings = ringDefs.map((def) => {
@@ -236,18 +288,20 @@ function Scene({ energy = 0 }) {
         side: THREE.DoubleSide,
       });
       const mesh = new THREE.Mesh(geo, mat);
+      mesh.renderOrder = 2;
       mesh.rotation.set(def.tilt[0], def.tilt[1], def.tilt[2]);
-      world.add(mesh);
+      core.add(mesh);
       return { mesh, uniforms, speed: def.speed, geo, mat };
     });
 
     /* -------------------------------------------------------- satellites */
-    const satGeo = new THREE.SphereGeometry(0.052, 16, 16);
+    const satGeo = new THREE.SphereGeometry(0.06, 16, 16);
     const satellites = [
-      { color: "#f5c26b", radius: 2.05, tilt: [1.18, 0.0, 0.22], speed: 0.52, phase: 0 },
-      { color: "#22d3ee", radius: 2.5, tilt: [0.46, 0.55, -0.3], speed: -0.4, phase: 2.1 },
-      { color: "#ff5d8f", radius: 3.15, tilt: [-0.35, -0.4, 0.75], speed: 0.28, phase: 4.2 },
+      { color: "#f5c26b", ring: 0, speed: 0.52, phase: 0 },
+      { color: "#22d3ee", ring: 1, speed: -0.4, phase: 2.1 },
+      { color: "#ff5d8f", ring: 2, speed: 0.28, phase: 4.2 },
     ].map((def) => {
+      const { r, tilt } = ringDefs[def.ring];
       const mat = new THREE.MeshBasicMaterial({
         color: new THREE.Color(def.color),
         transparent: true,
@@ -256,12 +310,13 @@ function Scene({ energy = 0 }) {
         depthWrite: false,
       });
       const mesh = new THREE.Mesh(satGeo, mat);
+      mesh.renderOrder = 2;
       const pivot = new THREE.Group();
       // Each satellite rides the plane of its matching ring.
-      pivot.rotation.set(def.tilt[0], def.tilt[1], def.tilt[2]);
+      pivot.rotation.set(tilt[0], tilt[1], tilt[2]);
       pivot.add(mesh);
-      world.add(pivot);
-      return { mesh, mat, pivot, ...def };
+      core.add(pivot);
+      return { mesh, mat, pivot, radius: r, ...def };
     });
 
     /* ------------------------------------------------------- point clouds */
@@ -270,9 +325,9 @@ function Scene({ energy = 0 }) {
 
     const galaxyUniforms = {
       uTime: { value: 0 },
-      uSize: { value: tier === "low" ? 0.03 : 0.026 },
+      uSize: { value: tier === "low" ? 0.024 : 0.02 },
       uScale: { value: 800 },
-      uOpacity: { value: 0.62 },
+      uOpacity: { value: 0 },
       uPointer: { value: new THREE.Vector2() },
     };
     const galaxyGeo = buildGalaxy(galaxyCount, tier);
@@ -285,12 +340,12 @@ function Scene({ energy = 0 }) {
       blending: THREE.AdditiveBlending,
     });
     const galaxy = new THREE.Points(galaxyGeo, galaxyMat);
-    galaxy.rotation.x = 0.5;
-    world.add(galaxy);
+    galaxy.rotation.x = 0.42;
+    halo.add(galaxy);
 
     const starUniforms = {
       uTime: { value: 0 },
-      uSize: { value: tier === "low" ? 0.05 : 0.042 },
+      uSize: { value: tier === "low" ? 0.04 : 0.034 },
       uScale: { value: 800 },
       uOpacity: { value: 0.5 },
       uPointer: { value: new THREE.Vector2() },
@@ -308,10 +363,11 @@ function Scene({ energy = 0 }) {
     scene.add(stars);
 
     /* ------------------------------------------------------- interaction */
-    const pointer = { x: 0, y: 0 };
+    const pointer = { x: 0, y: 0, px: -1e4, py: -1e4 };
     const smoothed = { x: 0, y: 0 };
     let scrollNorm = 0;
     let energySmooth = 0;
+    let hoverSmooth = 0;
     let stillReady = false;
 
     const onPointerMove = (e) => {
@@ -319,64 +375,98 @@ function Scene({ energy = 0 }) {
       const h = window.innerHeight || 1;
       pointer.x = (e.clientX / w) * 2 - 1;
       pointer.y = (e.clientY / h) * 2 - 1;
+      pointer.px = e.clientX;
+      pointer.py = e.clientY;
     };
 
     const onScroll = () => {
-      const h = window.innerHeight || 1;
-      scrollNorm = Math.min(window.scrollY / h, 1.4);
+      const h = mount.clientHeight || window.innerHeight || 1;
+      scrollNorm = Math.min(Math.max(window.scrollY / h, 0), 1);
     };
 
-    // Framing: on narrow screens pull the camera back and lift the composition
-    // so the orb never collides with the headline or the search field.
+    // Pin the composition to the masthead slot. The canvas scrolls with the
+    // hero, so the offset between the two rects never changes with scroll —
+    // only with layout — and the orb cannot drift out of its letter.
+    const measureAnchor = () => {
+      const w = mount.clientWidth;
+      const h = Math.max(mount.clientHeight, 1);
+      const m = mount.getBoundingClientRect();
+      const anchor = anchorRef && anchorRef.current;
+
+      let cx = w / 2;
+      let cy = h * 0.42;
+      let radius = Math.min(w, h) * 0.12;
+
+      if (anchor) {
+        const a = anchor.getBoundingClientRect();
+        if (a.width > 0 && a.height > 0) {
+          cx = a.left - m.left + a.width / 2;
+          cy = a.top - m.top + a.height / 2;
+          radius = Math.min(a.width, a.height) / 2;
+        }
+      }
+
+      layout.cx = m.left + cx;
+      layout.cy = m.top + cy;
+      layout.r = radius;
+
+      const key = `${w}|${h}|${cx.toFixed(1)}|${cy.toFixed(1)}|${radius.toFixed(1)}`;
+      if (key === layout.key) return false;
+      layout.key = key;
+
+      // World units per CSS pixel on the z = 0 plane.
+      const k = (2 * CAMERA_Z * Math.tan(THREE.MathUtils.degToRad(FOV / 2))) / h;
+      layout.x = (cx - w / 2) * k;
+      layout.y = (h / 2 - cy) * k;
+      layout.core = radius * k * ORB_FILL;
+      // The disc should frame the cover, but its inner edge must always clear
+      // the outermost ring.
+      const fromViewport = (Math.max(w * 0.48, h * 0.62) * k) / GALAXY_OUTER;
+      const clearRings = (layout.core * ringDefs[2].r * 1.18) / GALAXY_INNER;
+      layout.halo = Math.max(fromViewport, clearRings);
+      return true;
+    };
+
     const frame = () => {
       const w = mount.clientWidth;
       const h = Math.max(mount.clientHeight, 1);
-      const aspect = w / h;
 
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxDpr));
       renderer.setSize(w, h, false);
-      camera.aspect = aspect;
-
-      const portrait = aspect < 1;
-      const wide = w >= 1080 && aspect >= 1.15;
-
-      camera.fov = portrait ? 58 : 44;
-      camera.position.z = portrait ? 9.8 : THREE.MathUtils.clamp(10 - aspect * 1.1, 7.8, 9.6);
-      camera.position.y = portrait ? -0.1 : 0.1;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-
-      // Beside the copy on wide screens, centred and low on everything else.
-      layout.baseX = wide ? 2.55 : 0;
-      layout.baseY = wide ? -0.15 : -0.95;
-      world.position.x = layout.baseX;
-      world.scale.setScalar(portrait ? 0.72 : wide ? 1 : 0.86);
 
       // Points are sized in world units; convert to pixels with the same
       // perspective term the projection matrix uses.
-      const pxPerUnit = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
+      const pxPerUnit = h / (2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2));
       galaxyUniforms.uScale.value = pxPerUnit;
       starUniforms.uScale.value = pxPerUnit;
 
+      layout.key = "";
+      onScroll();
+
       // Resizing clears the drawing buffer; without a running loop the still
       // frame has to be redrawn by hand.
-      if (reduceMotion && stillReady) renderFrame(0.016, 2.4);
+      if (reduceMotion && stillReady) renderStill();
     };
-
-    frame();
-
-    const resizeObserver =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(frame) : null;
-    if (resizeObserver) resizeObserver.observe(mount);
-    window.addEventListener("resize", frame);
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
 
     /* ------------------------------------------------------------- render */
     const clock = new THREE.Clock();
     let frameId = null;
 
     const renderFrame = (dt, elapsed) => {
-      const e = energyRef.current;
+      measureAnchor();
+
+      const intro = reduceMotion ? 1 : Math.min(elapsed / INTRO_SECONDS, 1);
+      const pop = easeOutBack(intro);
+
+      // Stir the orb while the pointer is over it.
+      const dx = pointer.px - layout.cx;
+      const dy = pointer.py - layout.cy;
+      const over = Math.sqrt(dx * dx + dy * dy) < layout.r * 1.35 ? 0.55 : 0;
+      hoverSmooth = damp(hoverSmooth, over, 4, dt);
+
+      const e = Math.max(energyRef.current, hoverSmooth);
       energySmooth = damp(energySmooth, e, 3.2, dt);
 
       const t = elapsed * (1 + energySmooth * 0.55);
@@ -391,50 +481,54 @@ function Scene({ energy = 0 }) {
 
       shell.rotation.y = -elapsed * 0.06;
       shell.rotation.z = elapsed * 0.035;
-      shellMat.opacity = 0.04 + energySmooth * 0.07;
+      shellMat.opacity = (0.04 + energySmooth * 0.07) * intro;
+
+      // Scrolling away loosens the system: rings drift outward as the cover
+      // leaves the screen.
+      const spread = 1 + scrollNorm * 0.35;
 
       rings.forEach((ring, i) => {
         ring.uniforms.uTime.value = t;
         ring.mesh.rotation.z += dt * ring.speed * (0.4 + energySmooth * 0.9);
+        ring.mesh.scale.setScalar(spread);
         ring.uniforms.uOpacity.value =
-          ringDefs[i].opacity * (1.05 + energySmooth * 0.55);
+          ringDefs[i].opacity * (1.05 + energySmooth * 0.55) * intro;
       });
 
       satellites.forEach((sat) => {
         const a = sat.phase + elapsed * sat.speed * (1 + energySmooth);
-        sat.mesh.position.set(
-          Math.cos(a) * sat.radius,
-          Math.sin(a) * sat.radius,
-          0
-        );
-        sat.mat.opacity = 0.7 + Math.sin(elapsed * 3 + sat.phase) * 0.25;
+        const r = sat.radius * spread;
+        sat.mesh.position.set(Math.cos(a) * r, Math.sin(a) * r, 0);
+        sat.mat.opacity = (0.7 + Math.sin(elapsed * 3 + sat.phase) * 0.25) * intro;
       });
 
       galaxyUniforms.uTime.value = t;
-      galaxyUniforms.uOpacity.value = 0.58 + energySmooth * 0.28;
+      galaxyUniforms.uOpacity.value = (0.5 + energySmooth * 0.28) * intro;
       galaxy.rotation.y = elapsed * 0.045 * (1 + energySmooth * 1.2);
+      galaxy.rotation.x = 0.42 + scrollNorm * 0.3;
 
       starUniforms.uTime.value = elapsed;
       stars.rotation.y = elapsed * 0.012;
       stars.rotation.x = Math.sin(elapsed * 0.05) * 0.04;
 
       // Pointer parallax, critically damped so it glides instead of snapping.
+      // The world turns about the orb's own centre, so the orb never leaves
+      // its slot — only the orbits and the disc swing around it.
       smoothed.x = damp(smoothed.x, pointer.x, 2.6, dt);
       smoothed.y = damp(smoothed.y, pointer.y, 2.6, dt);
 
-      world.rotation.y = smoothed.x * 0.32;
-      world.rotation.x = smoothed.y * 0.2;
-      world.position.y = layout.baseY - scrollNorm * 1.5;
-      world.position.x = layout.baseX + smoothed.x * 0.28;
-      stars.rotation.z = smoothed.x * 0.05;
-
-      camera.position.x = damp(camera.position.x, smoothed.x * 0.45, 2.2, dt);
-      camera.lookAt(layout.baseX * 0.42, 0.3 - scrollNorm * 0.35, 0);
+      world.position.set(layout.x, layout.y, 0);
+      world.rotation.y = smoothed.x * 0.26;
+      world.rotation.x = smoothed.y * 0.16;
+      core.scale.setScalar(layout.core * pop);
+      halo.scale.setScalar(layout.halo * (0.86 + 0.14 * intro));
+      stars.rotation.z = smoothed.x * 0.04;
 
       renderer.render(scene, camera);
     };
 
     let contextLost = false;
+    let visible = true;
 
     const loop = () => {
       frameId = window.requestAnimationFrame(loop);
@@ -456,24 +550,65 @@ function Scene({ energy = 0 }) {
       }
     };
 
+    const sync = () => setRunning(visible && !document.hidden);
+
+    frame();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(frame) : null;
+    if (resizeObserver) resizeObserver.observe(mount);
+
+    // A still frame has no loop to notice the masthead moving (late web fonts,
+    // a reflowed hint line), so watch the type directly.
+    const anchorObserver =
+      reduceMotion && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => stillReady && renderStill())
+        : null;
+    const anchorEl = anchorRef && anchorRef.current;
+    if (anchorObserver && anchorEl && anchorEl.parentElement) {
+      anchorObserver.observe(anchorEl.parentElement);
+    }
+    if (reduceMotion && document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => stillReady && renderStill());
+    }
+
+    window.addEventListener("resize", frame);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+
     stillReady = true;
     if (reduceMotion) renderStill();
-    else setRunning(!document.hidden);
+    else sync();
+    announce(true);
 
-    // The canvas is a fixed backdrop for the whole page, so the only time it
-    // is truly unseen is when the tab itself is hidden.
-    const onVisibility = () => setRunning(!document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
+    // The canvas lives in the hero now, so it can rest whenever the hero is
+    // scrolled out of view, not only when the tab is hidden.
+    const intersection =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            ([entry]) => {
+              visible = entry.isIntersecting;
+              sync();
+            },
+            { rootMargin: "80px 0px" }
+          )
+        : null;
+    if (intersection) intersection.observe(mount);
+
+    document.addEventListener("visibilitychange", sync);
 
     const onContextLost = (e) => {
       e.preventDefault(); // allows the browser to hand the context back
       contextLost = true;
       setRunning(false);
+      announce(false);
     };
     const onContextRestored = () => {
       contextLost = false;
+      layout.key = "";
       if (reduceMotion) renderStill();
-      else setRunning(!document.hidden);
+      else sync();
+      announce(true);
     };
     renderer.domElement.addEventListener("webglcontextlost", onContextLost);
     renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
@@ -484,10 +619,12 @@ function Scene({ energy = 0 }) {
       window.removeEventListener("resize", frame);
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("scroll", onScroll);
-      document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("visibilitychange", sync);
       renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
       renderer.domElement.removeEventListener("webglcontextrestored", onContextRestored);
       if (resizeObserver) resizeObserver.disconnect();
+      if (anchorObserver) anchorObserver.disconnect();
+      if (intersection) intersection.disconnect();
 
       orbGeo.dispose();
       orbMat.dispose();
@@ -508,7 +645,7 @@ function Scene({ energy = 0 }) {
         mount.removeChild(renderer.domElement);
       }
     };
-  }, []);
+  }, [anchorRef]);
 
   return <div className="scene" ref={mountRef} aria-hidden="true" />;
 }

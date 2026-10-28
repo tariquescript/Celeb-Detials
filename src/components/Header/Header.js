@@ -7,7 +7,7 @@ const LINKS = [
   { href: "#stack", label: "Tech stack" },
 ];
 
-const SOURCE_URL = "https://github.com/";
+const SOURCE_URL = "https://github.com/tariquescript/Celeb-Detials";
 
 function GitHubIcon() {
   return (

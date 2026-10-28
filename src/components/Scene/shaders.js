@@ -248,7 +248,9 @@ void main() {
 `;
 
 export const RING_FRAGMENT = `
-precision mediump float;
+// highp to match the vertex stage: uTime is shared by both, and mismatched
+// precisions make the program fail to link on stricter drivers.
+precision highp float;
 
 uniform vec3 uColorA;
 uniform vec3 uColorB;

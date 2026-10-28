@@ -24,6 +24,7 @@
   --cyan: #22d3ee;
   --gold: #f5c26b;
   --rose: #ff5d8f;
+  --champagne: #e8cca0;
 
   --grad-primary: linear-gradient(115deg, #8b5cf6 0%, #6366f1 35%, #22d3ee 100%);
   --grad-warm: linear-gradient(115deg, #f5c26b 0%, #ff5d8f 55%, #8b5cf6 100%);
@@ -49,12 +50,18 @@
 
   /* --- type --- */
   --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --font-serif: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
   --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* --- layout --- */
   --shell: 1240px;
   --gutter: clamp(1.1rem, 4vw, 3rem);
+  --header-h: 74px;
+}
+
+@media (max-width: 420px) {
+  :root { --header-h: 66px; }
 }
 
 *,

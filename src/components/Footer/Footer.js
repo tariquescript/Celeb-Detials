@@ -28,7 +28,15 @@ function Footer() {
             </svg>
           </a>
           <span className="site-footer__copy">
-            © {new Date().getFullYear()} — designed &amp; built by Tarique Shaikh
+            © {new Date().getFullYear()} — designed &amp; built by{" "}
+            <a
+              className="site-footer__author"
+              href="https://tariquescript.vercel.app"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Tarique Shaikh
+            </a>
           </span>
         </div>
       </div>
